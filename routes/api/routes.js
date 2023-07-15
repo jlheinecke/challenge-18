@@ -1,4 +1,6 @@
 const router = require('express').Router();
+const User = require('../models/User');
+
 
 // Creates a new document
 router.post('/new-genre/:genre', (req, res) => {
