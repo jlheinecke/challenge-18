@@ -41,10 +41,21 @@ const userSchema = new Schema(
     }
 );
 
+userSchema.pre('remove', async function (next) {
+    const Thought = mongoose.model('thoughts');
+  
+    try {
+      await Thought.deleteMany({ user: this._id });
+      next();
+    } catch (error) {
+      next(error);
+    }
+  });
+
 userSchema.virtual('friendCount').get(function () {
     return this.friends.length;
 });
 
-const Users = model('user', userSchema);
+// const Users = model('users', userSchema);
 
-module.exports = Users;
+module.exports = userSchema;
