@@ -1,4 +1,4 @@
-const { Users } = require('../models');
+const { Users, Thoughts } = require('../models');
 
 module.exports = {
     // Get all users
@@ -11,6 +11,8 @@ module.exports = {
     getSingleUser(req, res) {
         Users.findOne({ _id: req.params.userId })
             .select('-__v')
+            .populate('thoughts')
+            .populate('friends')
             .then((user) =>
                 !user
                     ? res.status(404).json({ message: 'No user with that ID' })
@@ -26,13 +28,39 @@ module.exports = {
     },
     // Delete a user and associated thoughts
     deleteUser(req, res) {
+        const userId = req.params.userId;
+
+        Users.findById(userId)
+            .then(async (user) => {
+                if (!user) {
+                    return res.status(404).json({ message: 'No user with that ID' });
+                }
+
+                // Save the associated username before deleting the user
+                const usernameToDelete = user.username;
+
+                // Delete the user
+                await Users.findByIdAndDelete(userId);
+
+                // Delete all thoughts associated with the username
+                await Thoughts.deleteMany({ username: usernameToDelete });
+
+                res.json({ message: 'User and associated thoughts deleted!' });
+            })
+            .catch((err) => res.status(500).json(err));
+    },
+
+
+
+    delete_User(req, res) {
         Users.findOneAndDelete({ _id: req.params.userId })
-            .then((user) =>
-                !user
-                    ? res.status(404).json({ message: 'No user with that ID' })
-                    : Application.deleteMany({ _id: { $in: user.applications } })
-            )
-            .then(() => res.json({ message: 'User and associated apps deleted!' }))
+        .then((user) => {
+            if (!user) {
+              return res.status(404).json({ message: 'No thought with that ID' });
+            }
+            res.json({ message: 'User and thoughts deleted!' });
+          })
+        .then(() => Thoughts.deleteMany({_id: req.params.userId}))
             .catch((err) => res.status(500).json(err));
     },
 
