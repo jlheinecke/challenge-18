@@ -11,13 +11,22 @@ module.exports = {
     getSingleUser(req, res) {
         Users.findOne({ _id: req.params.userId })
             .select('-__v')
-            .populate('thoughts')
-            .populate('friends')
-            .then((user) =>
-                !user
-                    ? res.status(404).json({ message: 'No user with that ID' })
-                    : res.json(user)
-            )
+            .then((user) => {
+                if (!user) {
+                    return res.status(404).json({ message: 'No user with that ID' });
+                }
+
+                const username = user.username;
+
+                Thoughts.find({ username }) // Query thoughts by the retrieved username
+                    .then((thoughts) => {
+                        // Now you have both the user and the associated thoughts
+                        user = user.toObject(); // Convert Mongoose document to a plain JavaScript object
+                        user.thoughts = thoughts; // Add thoughts to the user object
+                        res.json(user);
+                    })
+                    .catch((err) => res.status(500).json(err));
+            })
             .catch((err) => res.status(500).json(err));
     },
     // Creates new user
@@ -35,16 +44,9 @@ module.exports = {
                 if (!user) {
                     return res.status(404).json({ message: 'No user with that ID' });
                 }
-
-                // Save the associated username before deleting the user
                 const usernameToDelete = user.username;
-
-                // Delete the user
                 await Users.findByIdAndDelete(userId);
-
-                // Delete all thoughts associated with the username
                 await Thoughts.deleteMany({ username: usernameToDelete });
-
                 res.json({ message: 'User and associated thoughts deleted!' });
             })
             .catch((err) => res.status(500).json(err));
@@ -54,13 +56,13 @@ module.exports = {
 
     delete_User(req, res) {
         Users.findOneAndDelete({ _id: req.params.userId })
-        .then((user) => {
-            if (!user) {
-              return res.status(404).json({ message: 'No thought with that ID' });
-            }
-            res.json({ message: 'User and thoughts deleted!' });
-          })
-        .then(() => Thoughts.deleteMany({_id: req.params.userId}))
+            .then((user) => {
+                if (!user) {
+                    return res.status(404).json({ message: 'No thought with that ID' });
+                }
+                res.json({ message: 'User and thoughts deleted!' });
+            })
+            .then(() => Thoughts.deleteMany({ _id: req.params.userId }))
             .catch((err) => res.status(500).json(err));
     },
 
@@ -69,12 +71,12 @@ module.exports = {
         Users.findOneAndUpdate(
             { _id: req.params.userId },
             { $set: req.body },
-            { runValidators: true, new: true }
+           // { runValidators: false, new: true }
         )
-            .then((application) =>
-                !application
+            .then((user) =>
+                !user
                     ? res.status(404).json({ message: 'No user with this id!' })
-                    : res.json(application)
+                    : res.json(user)
             )
             .catch((err) => {
                 console.log(err);
