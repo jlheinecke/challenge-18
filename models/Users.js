@@ -1,5 +1,22 @@
 const { Schema, model } = require('mongoose');
 
+const friendsSchema = new Schema(
+    {
+        friendsId: {
+            type: Schema.Types.ObjectId,
+            default: Schema.Types.ObjectId,
+        },
+        name: {
+            type: String,
+            required: true,
+        },
+        createdAt: {
+            type: Date,
+            default: Date.now,
+        }
+    }
+);
+
 const userSchema = new Schema(
     {
         username: {
@@ -20,12 +37,7 @@ const userSchema = new Schema(
                 ref: 'thoughts',
             },
         ],
-        friends: [
-            {
-                type: Schema.Types.ObjectId,
-                ref: 'users',
-            },
-        ],
+        friends: [friendsSchema]
     },
     {
         toJSON: {
@@ -52,6 +64,7 @@ userSchema.pre('remove', async function (next) {
     }
   });
 
+ 
 userSchema.virtual('friendCount').get(function () {
     return this.friends.length;
 });

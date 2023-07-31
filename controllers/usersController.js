@@ -18,11 +18,10 @@ module.exports = {
 
                 const username = user.username;
 
-                Thoughts.find({ username }) // Query thoughts by the retrieved username
+                Thoughts.find({ username })
                     .then((thoughts) => {
-                        // Now you have both the user and the associated thoughts
-                        user = user.toObject(); // Convert Mongoose document to a plain JavaScript object
-                        user.thoughts = thoughts; // Add thoughts to the user object
+                        user = user.toObject();
+                        user.thoughts = thoughts;
                         res.json(user);
                     })
                     .catch((err) => res.status(500).json(err));
@@ -37,9 +36,8 @@ module.exports = {
     },
     // Delete a user and associated thoughts
     deleteUser(req, res) {
-        const userId = req.params.userId;
 
-        Users.findById(userId)
+        Users.findById(req.params.userId)
             .then(async (user) => {
                 if (!user) {
                     return res.status(404).json({ message: 'No user with that ID' });
@@ -52,26 +50,12 @@ module.exports = {
             .catch((err) => res.status(500).json(err));
     },
 
-
-
-    delete_User(req, res) {
-        Users.findOneAndDelete({ _id: req.params.userId })
-            .then((user) => {
-                if (!user) {
-                    return res.status(404).json({ message: 'No thought with that ID' });
-                }
-                res.json({ message: 'User and thoughts deleted!' });
-            })
-            .then(() => Thoughts.deleteMany({ _id: req.params.userId }))
-            .catch((err) => res.status(500).json(err));
-    },
-
     // Update user
     updateUser(req, res) {
         Users.findOneAndUpdate(
             { _id: req.params.userId },
             { $set: req.body },
-           // { runValidators: false, new: true }
+            // { runValidators: false, new: true }
         )
             .then((user) =>
                 !user
@@ -87,15 +71,52 @@ module.exports = {
     addFriend(req, res) {
         Users.findOneAndUpdate(
             { _id: req.params.userId },
-            { $addToSet: { tags: req.body } },
-            { runValidators: true, new: true }
+            { $push: { friends: req.body } },
+            { new: true }
         )
-            .then((application) =>
-                !application
-                    ? res.status(404).json({ message: 'No user with this id!' })
-                    : res.json(application)
-            )
-            .catch((err) => res.status(500).json(err));
+            .then((user) => {
+                if (!user) {
+                    return res.status(404).json({ message: 'User not found' });
+                }
+
+                res.json(user);
+            })
+            .catch((err) => {
+                console.error('Error adding friend:', err);
+                res.status(500).json({ message: 'Internal server error' });
+            });
     },
 
+    //delete a friend
+    deleteFriend(req, res) {
+        const userId = req.params.userId;
+        const friendId = req.params.friendId;
+
+        Users.findById(userId)
+            .select('-__v')
+            .then((user) => {
+                if (!user) {
+                    return res.status(404).json({ message: 'No user with that ID' });
+                }
+
+                const friendIndex = user.friends.findIndex((friend) => friend._id.toString() === friendId);
+                const targetName = user.friends[friendIndex].name;
+
+                Users.findOneAndUpdate(
+                    { "friends.name": targetName },
+                    { $pull: { friends: { name: targetName } } },
+                    { new: true }
+                )
+                    .then((updatedUser) => {
+                        if (!updatedUser) {
+                            return res.status(404).json({ message: 'No user with that friend name' });
+                        }
+                        res.json({ message: 'Friend deleted!', updatedUser });
+                    })
+                    .catch((err) => {
+                        console.error('Error deleting friend:', err);
+                        res.status(500).json({ message: 'Error deleting friend', error: err });
+                    });
+            })
+    }
 };
