@@ -87,20 +87,28 @@ module.exports = {
                 console.error('Error adding reaction:', err);
                 res.status(500).json({ message: 'Internal server error' });
             });
-
-
-
     },
-    // Delete a reaction
+
     deleteReaction(req, res) {
-        Thoughts.findOneAndDelete({ _id: req.params.reactionId })
-            .then((reaction) => {
-                if (!reaction) {
-                    return res.status(404).json({ message: 'No reaction with that ID' });
-                }
-
-                res.json({ message: 'Reaction deleted!' });
-            })
-            .catch((err) => res.status(500).json(err));
-    },
+        Thoughts.findOneAndUpdate(
+            { _id: req.params.thoughtId },
+            { $pull: { reactions: { _id: req.params.reactionId } } },
+            { new: true }
+        )
+        .then((thought) => {
+            if (!thought) {
+                return res.status(404).json({ message: 'Thought not found' });
+            }
+    
+            // The reaction has been successfully removed
+            console.log('Reaction deleted');
+    
+            // Handle the rest of the logic or send a response here
+            res.json({ message: 'Reaction deleted!', thought });
+        })
+        .catch((error) => {
+            console.error('Error deleting reaction:', error);
+            res.status(500).json({ message: 'Internal server error' });
+        });
+    }
 };
